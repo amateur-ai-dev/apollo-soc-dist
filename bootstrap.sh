@@ -152,15 +152,15 @@ install_binary() {
 echo ""
 info "Installing scanners..."
 
-install_binary trivy aquasecurity/trivy/trivy "brew install aquasecurity/trivy/trivy" || true
-install_binary grype anchore/grype/grype "brew install anchore/grype/grype" || true
-install_binary osv-scanner google/osv-scanner/osv-scanner "brew install google/osv-scanner/osv-scanner" || true
+install_binary trivy trivy "brew install trivy" || true
+install_binary grype grype "brew install grype" || true
+install_binary osv-scanner osv-scanner "brew install osv-scanner" || true
 install_binary gitleaks gitleaks "brew install gitleaks" || true
 install_binary trufflehog trufflehog "brew install trufflehog" || true
-install_binary nuclei projectdiscovery/tap/nuclei "brew install projectdiscovery/tap/nuclei" || true
+install_binary nuclei nuclei "brew install nuclei" || true
 install_binary kubescape kubescape "brew install kubescape" || true
 install_binary kube-bench kube-bench "brew install kube-bench" || true
-install_binary syft anchore/syft/syft "brew install anchore/syft/syft" || true
+install_binary syft syft "brew install syft" || true
 install_binary cosign cosign "brew install cosign" || true
 
 # Checkov/Prowler installed separately (networkx conflict with llama-index)
