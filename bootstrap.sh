@@ -91,14 +91,45 @@ if [ -z "$WHL" ]; then
 fi
 ok "Downloaded $(basename "$WHL")"
 
-# --- Install ---
-info "Installing apollo-soc..."
-PY_FLAG=""
+# --- Create venv + install ---
+APOLLO_HOME="${APOLLO_HOME:-$HOME/.apollo-soc}"
+info "Creating virtual environment at $APOLLO_HOME..."
+
+PY_ARG=""
 if [ -n "${UV_PYTHON:-}" ]; then
-  PY_FLAG="--python $UV_PYTHON"
+  PY_ARG="--python $UV_PYTHON"
 fi
-uv pip install $PY_FLAG "$WHL[scanners]" --quiet 2>/dev/null || uv pip install $PY_FLAG "$WHL" --quiet
+uv venv $PY_ARG "$APOLLO_HOME/venv" --quiet 2>/dev/null
+ok "venv created"
+
+info "Installing apollo-soc..."
+VIRTUAL_ENV="$APOLLO_HOME/venv"
+uv pip install --python "$APOLLO_HOME/venv/bin/python" "$WHL[scanners]" --quiet 2>/dev/null \
+  || uv pip install --python "$APOLLO_HOME/venv/bin/python" "$WHL" --quiet
 ok "apollo-soc installed"
+
+# --- Add to PATH ---
+BINDIR="$APOLLO_HOME/venv/bin"
+if [[ ":$PATH:" != *":$BINDIR:"* ]]; then
+  export PATH="$BINDIR:$PATH"
+fi
+
+SHELL_RC=""
+if [ -n "${ZSH_VERSION:-}" ] || [ "$(basename "$SHELL")" = "zsh" ]; then
+  SHELL_RC="$HOME/.zshrc"
+elif [ -n "${BASH_VERSION:-}" ] || [ "$(basename "$SHELL")" = "bash" ]; then
+  SHELL_RC="$HOME/.bashrc"
+fi
+
+if [ -n "$SHELL_RC" ]; then
+  PATH_LINE="export PATH=\"$BINDIR:\$PATH\""
+  if ! grep -qF "$BINDIR" "$SHELL_RC" 2>/dev/null; then
+    echo "" >> "$SHELL_RC"
+    echo "# Apollo SOC" >> "$SHELL_RC"
+    echo "$PATH_LINE" >> "$SHELL_RC"
+    ok "Added to $SHELL_RC (restart shell or: source $SHELL_RC)"
+  fi
+fi
 
 # --- Install binary scanners ---
 install_binary() {
@@ -133,9 +164,10 @@ install_binary syft anchore/syft/syft "brew install anchore/syft/syft" || true
 install_binary cosign cosign "brew install cosign" || true
 
 # Checkov/Prowler installed separately (networkx conflict with llama-index)
-info "Installing checkov + prowler (isolated)..."
-uv pip install "checkov>=3.2" --quiet 2>/dev/null && ok "checkov installed" || warn "checkov failed (install manually: pip install checkov)"
-uv pip install "prowler>=4.0" --quiet 2>/dev/null && ok "prowler installed" || warn "prowler failed (install manually: pip install prowler)"
+info "Installing checkov + prowler..."
+VENV_PY="$APOLLO_HOME/venv/bin/python"
+uv pip install --python "$VENV_PY" "checkov>=3.2" --quiet 2>/dev/null && ok "checkov installed" || warn "checkov failed (networkx conflict — install in separate venv)"
+uv pip install --python "$VENV_PY" "prowler>=4.0" --quiet 2>/dev/null && ok "prowler installed" || warn "prowler failed (install manually: pip install prowler)"
 
 # --- Scanner summary ---
 echo ""
