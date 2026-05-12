@@ -47,20 +47,31 @@ if ! command -v uv &>/dev/null; then
 fi
 ok "uv $(uv --version 2>/dev/null | head -1)"
 
-# --- Check Python 3.12+ ---
-if ! command -v python3 &>/dev/null; then
-  info "Installing Python 3.12 via uv..."
-  uv python install 3.12
+# --- Ensure Python 3.12+ via uv ---
+PY_OK=false
+if command -v python3 &>/dev/null; then
+  PY_MAJOR=$(python3 -c 'import sys; print(sys.version_info.major)')
+  PY_MINOR=$(python3 -c 'import sys; print(sys.version_info.minor)')
+  if [ "$PY_MAJOR" -ge 3 ] && [ "$PY_MINOR" -ge 12 ]; then
+    PY_OK=true
+  fi
 fi
 
-PY_VERSION=$(python3 -c 'import sys; print(f"{sys.version_info.major}.{sys.version_info.minor}")')
-PY_MAJOR=$(echo "$PY_VERSION" | cut -d. -f1)
-PY_MINOR=$(echo "$PY_VERSION" | cut -d. -f2)
-if [ "$PY_MAJOR" -lt 3 ] || { [ "$PY_MAJOR" -eq 3 ] && [ "$PY_MINOR" -lt 12 ]; }; then
-  warn "Python $PY_VERSION found, need 3.12+. Run: uv python install 3.12"
-  exit 1
+if [ "$PY_OK" = false ]; then
+  info "Installing Python 3.12 via uv..."
+  uv python install 3.12
+  UV_PY=$(uv python find 3.12 2>/dev/null || true)
+  if [ -n "$UV_PY" ]; then
+    export UV_PYTHON="$UV_PY"
+    ok "Python 3.12 installed via uv ($UV_PY)"
+  else
+    warn "Could not install Python 3.12. Install manually."
+    exit 1
+  fi
+else
+  PY_VERSION="${PY_MAJOR}.${PY_MINOR}"
+  ok "Python $PY_VERSION"
 fi
-ok "Python $PY_VERSION"
 
 # --- Download wheel from private release ---
 TMPDIR=$(mktemp -d)
@@ -82,7 +93,11 @@ ok "Downloaded $(basename "$WHL")"
 
 # --- Install ---
 info "Installing apollo-soc..."
-uv pip install "$WHL[scanners]" --quiet 2>/dev/null || uv pip install "$WHL" --quiet
+PY_FLAG=""
+if [ -n "${UV_PYTHON:-}" ]; then
+  PY_FLAG="--python $UV_PYTHON"
+fi
+uv pip install $PY_FLAG "$WHL[scanners]" --quiet 2>/dev/null || uv pip install $PY_FLAG "$WHL" --quiet
 ok "apollo-soc installed"
 
 # --- Install binary scanners ---
