@@ -60,7 +60,7 @@ fi
 if [ "$PY_OK" = false ]; then
   info "Installing Python 3.12 via uv..."
   uv python install 3.12
-  UV_PY=$(uv python find 3.12 2>/dev/null || true)
+  UV_PY=$(uv python find --no-project 3.12 2>/dev/null || true)
   if [ -n "$UV_PY" ]; then
     export UV_PYTHON="$UV_PY"
     ok "Python 3.12 installed via uv ($UV_PY)"
@@ -79,9 +79,9 @@ trap 'rm -rf "$TMPDIR"' EXIT
 
 info "Downloading apollo-soc from GitHub Release ($VERSION)..."
 if [ "$VERSION" = "latest" ]; then
-  gh release download --repo "$REPO" --pattern "*.whl" --dir "$TMPDIR" 2>/dev/null
+  gh release download --repo "$REPO" --pattern "*.whl" --dir "$TMPDIR" 2>&1 || true
 else
-  gh release download "$VERSION" --repo "$REPO" --pattern "*.whl" --dir "$TMPDIR" 2>/dev/null
+  gh release download "$VERSION" --repo "$REPO" --pattern "*.whl" --dir "$TMPDIR" 2>&1 || true
 fi
 
 WHL=$(find "$TMPDIR" -name "*.whl" | head -1)
